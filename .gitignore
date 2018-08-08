@@ -5,5 +5,4 @@ archiver/venv
 downloads/
 html
 _pub/
-run_archive.sh
 output

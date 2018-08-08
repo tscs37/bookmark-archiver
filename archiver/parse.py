@@ -19,6 +19,7 @@ import re
 import json
 import xml.etree.ElementTree as etree
 
+from time import mktime
 from datetime import datetime
 
 from util import (
@@ -27,6 +28,8 @@ from util import (
     str_between,
     get_link_type,
 )
+
+import feedparser
 
 
 def get_parsers(file):
@@ -37,6 +40,7 @@ def get_parsers(file):
         'pinboard': parse_json_export,
         'bookmarks': parse_bookmarks_export,
         'rss': parse_rss_export,
+        'atom': parse_atom_export,
         'pinboard_rss': parse_pinboard_rss_feed,
         'medium_rss': parse_medium_rss_feed,
     }
@@ -150,6 +154,26 @@ def parse_rss_export(rss_file):
         info['type'] = get_link_type(info)
 
         yield info
+
+def parse_atom_export(rss_file):
+    """Parse Atom XML-format files into links"""
+
+    rss_file.seek(0)
+    rss_data = rss_file.read()
+    d = feedparser.parse(rss_data)
+    for item in d.entries:
+        info = {
+            'url': item.link,
+            'domain': domain(item.link),
+            'base_url': base_url(item.link),
+            'timestamp': str(mktime(item.published_parsed)),
+            'tags': '',
+            'title': item.title,
+            'sources': [rss_file.name],
+        }
+        info['type'] = get_link_type(info)
+        yield info
+
 
 def parse_bookmarks_export(html_file):
     """Parse netscape-format bookmarks export files (produced by all browsers)"""

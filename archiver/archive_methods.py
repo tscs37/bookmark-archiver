@@ -11,7 +11,6 @@ from peekable import Peekable
 from index import wget_output_path, parse_json_link_index, write_link_index
 from links import links_after_timestamp
 from config import (
-    ARCHIVE_DIR,
     CHROME_BINARY,
     FIREFOX_BINARY,
     FIREFOX_PROFILE,
@@ -19,6 +18,7 @@ from config import (
     FETCH_WGET_REQUISITES,
     FETCH_PDF,
     FETCH_SCREENSHOT,
+    FETCH_DOM,
     RESOLUTION,
     CHECK_SSL_VALIDITY,
     SUBMIT_ARCHIVE_DOT_ORG,
@@ -29,11 +29,13 @@ from config import (
     CHROME_USER_DATA_DIR,
     TIMEOUT,
     ANSI,
+    ARCHIVE_DIR,
 )
 from util import (
     check_dependencies,
     progress,
     chmod_file,
+    pretty_path,
 )
 
 
@@ -51,7 +53,7 @@ def archive_links(archive_path, links, source=None, resume=None):
 
     try:
         for idx, link in enumerate(to_archive):
-            link_dir = os.path.join(archive_path, 'archive', link['timestamp'])
+            link_dir = os.path.join(ARCHIVE_DIR, link['timestamp'])
             archive_link(link_dir, link)
     
     except (KeyboardInterrupt, SystemExit, Exception) as e:
@@ -64,7 +66,7 @@ def archive_links(archive_path, links, source=None, resume=None):
         ))
         print('    Continue where you left off by running:')
         print('        {} {}'.format(
-            sys.argv[0],
+            pretty_path(sys.argv[0]),
             link['timestamp'],
         ))
         if not isinstance(e, KeyboardInterrupt):
@@ -95,6 +97,9 @@ def archive_link(link_dir, link, overwrite=True):
     if FETCH_SCREENSHOT:
         link = fetch_screenshot(link_dir, link, overwrite=overwrite)
 
+    if FETCH_DOM:
+        link = fetch_dom(link_dir, link, overwrite=overwrite)
+
     if SUBMIT_ARCHIVE_DOT_ORG:
         link = archive_dot_org(link_dir, link, overwrite=overwrite)
 
@@ -121,7 +126,7 @@ def log_link_archive(link_dir, link, update_existing):
         **ANSI,
     ))
 
-    print('    > {}{}'.format(link_dir, '' if update_existing else ' (new)'))
+    print('    > {}{}'.format(pretty_path(link_dir), '' if update_existing else ' (new)'))
     if link['type']:
         print('      i {}'.format(link['type']))
 
@@ -202,11 +207,20 @@ def fetch_wget(link_dir, link, requisites=FETCH_WGET_REQUISITES, timeout=TIMEOUT
         result = run(CMD, stdout=PIPE, stderr=PIPE, cwd=link_dir, timeout=timeout + 1)  # index.html
         end()
         output = wget_output_path(link, look_in=domain_dir)
-        if result.returncode > 0 and result.returncode != 8:
+
+        # Check for common failure cases
+        if result.returncode > 0:
             print('        got wget response code {}:'.format(result.returncode))
-            print('\n'.join('          ' + line for line in (result.stderr or result.stdout).decode().rsplit('\n', 10)[-10:] if line.strip()))
+            if result.returncode != 8:
+                print('\n'.join('          ' + line for line in (result.stderr or result.stdout).decode().rsplit('\n', 10)[-10:] if line.strip()))
+            if b'403: Forbidden' in result.stderr:
+                raise Exception('403 Forbidden (try changing WGET_USER_AGENT)')
+            if b'404: Not Found' in result.stderr:
+                raise Exception('404 Not Found')
+            if b'ERROR 500: Internal Server Error' in result.stderr:
+                raise Exception('500 Internal Server Error')
             if result.returncode == 4:
-                raise Exception('Failed to wget download')
+                raise Exception('Failed wget download')
     except Exception as e:
         end()
         print('        Run to see full output:', 'cd {}; {}'.format(link_dir, ' '.join(CMD)))
@@ -254,7 +268,6 @@ def fetch_pdf(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DI
         'output': output,
     }
 
-
 @attach_result_to_link('screenshot')
 def fetch_screenshot(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DIR, resolution=RESOLUTION, firefox_profile=FIREFOX_PROFILE):
     """take screenshot of site using chrome --headless"""
@@ -291,6 +304,43 @@ def fetch_screenshot(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_
         'output': output,
     }
     
+@attach_result_to_link('dom')
+def fetch_dom(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DIR):
+    """print HTML of site to file using chrome --dump-html"""
+
+    if link['type'] in ('PDF', 'image'):
+        return {'output': wget_output_path(link)}
+    
+    output_path = os.path.join(link_dir, 'output.html')
+
+    if os.path.exists(output_path):
+        return {'output': 'output.html', 'status': 'skipped'}
+
+    CMD = [
+        *chrome_headless(user_data_dir=user_data_dir),
+        '--dump-dom',
+        link['url']
+    ]
+    end = progress(timeout, prefix='      ')
+    try:
+        with open(output_path, 'w+') as f:
+            result = run(CMD, stdout=f, stderr=PIPE, cwd=link_dir, timeout=timeout + 1)  # output.html
+        end()
+        if result.returncode:
+            print('     ', (result.stderr).decode())
+            raise Exception('Failed to fetch DOM')
+        chmod_file('output.html', cwd=link_dir)
+        output = 'output.html'
+    except Exception as e:
+        end()
+        print('        Run to see full output:', 'cd {}; {}'.format(link_dir, ' '.join(CMD)))
+        print('        {}Failed: {} {}{}'.format(ANSI['red'], e.__class__.__name__, e, ANSI['reset']))
+        output = e
+
+    return {
+        'cmd': CMD,
+        'output': output,
+    }
 
 @attach_result_to_link('archive_org')
 def archive_dot_org(link_dir, link, timeout=TIMEOUT):
@@ -447,7 +497,7 @@ def fetch_favicon(link_dir, link, timeout=TIMEOUT):
 
 
 def chrome_headless(binary=CHROME_BINARY, user_data_dir=CHROME_USER_DATA_DIR):
-    args = [binary, '--headless', '--disable-gpu']
+    args = [binary, '--headless']  # '--disable-gpu'
     default_profile = os.path.expanduser('~/Library/Application Support/Google/Chrome/Default')
     if user_data_dir:
         args.append('--user-data-dir={}'.format(user_data_dir))

@@ -24,18 +24,19 @@
                 margin: 0px;
                 font-weight: 200;
                 font-family: "Gill Sans", Helvetica, sans-serif;
+                font-size: calc(16px + 1vw);
             }
             .collapse-icon {
-                float: left;
+                float: right;
                 color: black;
                 width: 126px;
-                font-size: 0.7em;
+                font-size: 0.8em;
                 margin-top: 20px;
                 margin-right: 0px;
                 margin-left: -35px;
             }
             .nav-icon img {
-                float: right;
+                float: left;
                 display: block;
                 margin-right: 13px;
                 color: black;
@@ -48,6 +49,11 @@
             }
             .title-url {
                 color: black;
+                display: block;
+                width: 75%;
+                white-space: nowrap;
+                overflow: hidden;
+                margin: auto;
             }
             .archive-page-header {
                 margin-top: 5px;
@@ -146,12 +152,7 @@
                 }
             }
         </style>
-        <script
-          src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-          integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
-          crossorigin="anonymous"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
     </head>
     <body>
         <header>
@@ -159,31 +160,35 @@
                 <a href="../../index.html" class="nav-icon" title="Go to Main Index...">
                     <img src="../../static/archive.png" alt="Archive Icon">
                 </a>
-                <a href="#" class="collapse-icon" title="Toggle info panel...">
-                    [-]
+                <a href="#" class="collapse-icon" style="text-decoration: none" title="Toggle info panel...">
+                    ▾
                 </a>
-                $title<br/>
+                <img src="$favicon" height="20px"> $title<br/>
                 <a href="$url" class="title-url">
-                    <small><img src="$favicon" height="20px"> $base_url</small>
+                    <small>$base_url</small>
                 </a>
             </h1>
         </header>
         <div class="site-header container-fluid">
             <div class="row archive-page-header">
-                <div class="col-lg-2">
-                    <div class="alert alert-warning">
-                        Tags:
-                        <span class="badge badge-success">$tags</span> 
-                        <span class="badge badge-default">$type</span>
-                        <div style="height:5px"></div>
-                        Bookmarked:<br/>
-                            <small>$bookmarked<br/></small>
-                        Archived:<br/>
-                            <small>$updated</small>
-                        <hr/>
-                        <a href="index.json">JSON</a> | <a href=".">Files</a>
-                    </div>
+                <div class="col-lg-4 alert well">
+                    Bookmarked: <small title="Timestamp: $bookmarked_ts">$bookmarked</small>
+                    &nbsp; | &nbsp;
+                    Last updated: <small title="Timestamp: $updated_ts">$updated</small>
                 </div>
+                <div class="col-lg-4 alert well">
+                    Type: 
+                    <span class="badge badge-default">$type</span>
+                    &nbsp; | &nbsp;
+                    Tags:
+                    <span class="badge badge-success">$tags</span> 
+                </div>
+                <div class="col-lg-4 alert well">
+                    Download:
+                    <a href="index.json" title="JSON summary of archived link.">JSON</a> | 
+                    <a href="." title="Webserver-provided index of files directory.">Files</a>
+                </div>
+                <hr/>
                 <div class="col-lg-2">
                     <div class="card selected-card">
                       <iframe class="card-img-top" src="$wget" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
@@ -193,6 +198,18 @@
                         </a>
                         <a href="$wget" target="preview"><h4 class="card-title">Local Archive</h4></a>
                         <p class="card-text">archive/$domain</p>
+                      </div>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="card">
+                      <iframe class="card-img-top" src="$dom" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+                      <div class="card-body">
+                        <a href="$dom" style="float:right" title="Open in new tab..." target="_blank" rel="noopener">
+                            <img src="../../static/external.png" class="external"/>
+                        </a>
+                        <a href="$dom" target="preview"><h4 class="card-title">HTML</h4></a>
+                        <p class="card-text">archive/output.html</p>
                       </div>
                     </div>
                 </div>
@@ -247,48 +264,54 @@
             </div>
         </div>
         <iframe sandbox="allow-same-origin allow-scripts allow-forms" class="full-page-iframe" src="$wget" name="preview"></iframe>
+    
+        <script
+              src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+              integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+              crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+
+        <script>
+            // show selected file in iframe when preview card is clicked
+            jQuery('.card').on('click', function(e) {
+                jQuery('.selected-card').removeClass('selected-card')
+                jQuery(e.target).closest('.card').addClass('selected-card')
+            })
+            jQuery('.card a[target=preview]').on('click', function(e) {
+                if (e.currentTarget.href.endsWith('.pdf')) {
+                    jQuery('.full-page-iframe')[0].removeAttribute('sandbox')
+                } else {
+                    jQuery('.full-page-iframe')[0].sandbox = "allow-same-origin allow-scripts allow-forms"
+                }
+                return true
+            })
+
+            // un-sandbox iframes showing pdfs (required to display pdf viewer)
+            jQuery('iframe').map(function() {
+                if (this.src.endsWith('.pdf')) {
+                    this.removeAttribute('sandbox')
+                    this.src = this.src
+                }
+            })
+
+            // hide header when collapse icon is clicked
+            jQuery('.collapse-icon').on('click', function() {
+                if (jQuery('.collapse-icon').text().includes('▾')) {
+                    jQuery('.collapse-icon').text('▸')
+                    jQuery('.site-header').hide()
+                    jQuery('.full-page-iframe').addClass('iframe-large')
+                } else {
+                    jQuery('.collapse-icon').text('▾')
+                    jQuery('.site-header').show()
+                    jQuery('.full-page-iframe').removeClass('iframe-large')
+                }
+                return true
+            })
+
+            // hide all preview iframes on small screens
+            if (window.innerWidth < 1091) {
+                jQuery('.card a[target=preview]').attr('target', '_self')
+            }
+        </script>
     </body>
-
-    <script>
-        // show selected file in iframe when preview card is clicked
-        jQuery('.card').on('click', function(e) {
-            jQuery('.selected-card').removeClass('selected-card')
-            jQuery(e.target).closest('.card').addClass('selected-card')
-        })
-        jQuery('.card a[target=preview]').on('click', function(e) {
-            if (e.currentTarget.href.endsWith('.pdf')) {
-                jQuery('.full-page-iframe')[0].removeAttribute('sandbox')
-            } else {
-                jQuery('.full-page-iframe')[0].sandbox = "allow-same-origin allow-scripts allow-forms"
-            }
-            return true
-        })
-
-        // un-sandbox iframes showing pdfs (required to display pdf viewer)
-        jQuery('iframe').map(function() {
-            if (this.src.endsWith('.pdf')) {
-                this.removeAttribute('sandbox')
-                this.src = this.src
-            }
-        })
-
-        // hide header when collapse icon is clicked
-        jQuery('.collapse-icon').on('click', function() {
-            if (jQuery('.collapse-icon').text().includes('[-]')) {
-                jQuery('.collapse-icon').text('[+]')
-                jQuery('.site-header').hide()
-                jQuery('.full-page-iframe').addClass('iframe-large')
-            } else {
-                jQuery('.collapse-icon').text('[-]')
-                jQuery('.site-header').show()
-                jQuery('.full-page-iframe').removeClass('iframe-large')
-            }
-            return true
-        })
-
-        // hide all preview iframes on small screens
-        if (window.innerWidth < 1091) {
-            jQuery('.card a[target=preview]').attr('target', '_self')
-        }
-    </script>
 </html>

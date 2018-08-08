@@ -6,12 +6,8 @@ from string import Template
 from distutils.dir_util import copy_tree
 
 from config import (
-    INDEX_TEMPLATE,
-    INDEX_ROW_TEMPLATE,
-    LINK_INDEX_TEMPLATE,
-    TEMPLATE_STATICFILES,
-    ARCHIVE_PERMISSIONS,
-    ARCHIVE_DIR,
+    TEMPLATES_DIR,
+    OUTPUT_PERMISSIONS,
     ANSI,
     GIT_SHA,
     FOOTER_INFO,
@@ -20,6 +16,7 @@ from util import (
     chmod_file,
     wget_output_path,
     derived_link_info,
+    pretty_path,
 )
 
 
@@ -37,8 +34,8 @@ def write_links_index(out_dir, links):
     print('{green}[√] [{}] Updated main index files:{reset}'.format(
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         **ANSI))
-    print('    > {}/index.json'.format(out_dir))
-    print('    > {}/index.html'.format(out_dir))
+    print('    > {}/index.json'.format(pretty_path(out_dir)))
+    print('    > {}/index.html'.format(pretty_path(out_dir)))
 
 def write_json_links_index(out_dir, links):
     """write the json link index to a given path"""
@@ -73,12 +70,12 @@ def write_html_links_index(out_dir, links):
 
     path = os.path.join(out_dir, 'index.html')
 
-    copy_tree(TEMPLATE_STATICFILES, os.path.join(out_dir, "static"))
+    copy_tree(os.path.join(TEMPLATES_DIR, 'static'), os.path.join(out_dir, 'static'))
 
-    with open(INDEX_TEMPLATE, 'r', encoding='utf-8') as f:
+    with open(os.path.join(TEMPLATES_DIR, 'index.html'), 'r', encoding='utf-8') as f:
         index_html = f.read()
 
-    with open(INDEX_ROW_TEMPLATE, 'r', encoding='utf-8') as f:
+    with open(os.path.join(TEMPLATES_DIR, 'index_row.html'), 'r', encoding='utf-8') as f:
         link_row_html = f.read()
 
     link_rows = '\n'.join(
@@ -130,7 +127,7 @@ def parse_json_link_index(out_dir):
     return {}
 
 def write_html_link_index(out_dir, link):
-    with open(LINK_INDEX_TEMPLATE, 'r', encoding='utf-8') as f:
+    with open(os.path.join(TEMPLATES_DIR, 'link_index_fancy.html'), 'r', encoding='utf-8') as f:
         link_html = f.read()
 
     path = os.path.join(out_dir, 'index.html')
@@ -145,6 +142,8 @@ def write_html_link_index(out_dir, link):
             'tags': link['tags'] or 'untagged',
             'bookmarked': datetime.fromtimestamp(float(link['timestamp'])).strftime('%Y-%m-%d %H:%M'),
             'updated': datetime.fromtimestamp(float(link['updated'])).strftime('%Y-%m-%d %H:%M'),
+            'bookmarked_ts': link['timestamp'],
+            'updated_ts': link['updated'],
             'archive_org': link['latest'].get('archive_org') or 'https://web.archive.org/save/{}'.format(link['url']),
             'wget': link['latest'].get('wget') or wget_output_path(link),
         }))

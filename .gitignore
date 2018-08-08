@@ -1,19 +1,8 @@
-# Pocket archive output folder
-pocket/
-bookmarks/
-pinboard/
-html/
-downloads/
-
-# Byte-compiled / optimized / DLL files
+output/
+.DS_Store
 __pycache__/
-
-# Virtualenv
-env/
-ENV/
-venv/
-VENV/
-.venv/
-.env/
-.python-version
-.env
+archiver/venv
+downloads/
+html
+_pub/
+run_archive.sh

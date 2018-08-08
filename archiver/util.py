@@ -12,8 +12,10 @@ from urllib.parse import quote
 
 from config import (
     IS_TTY,
-    ARCHIVE_PERMISSIONS,
-    HTML_FOLDER,
+    OUTPUT_PERMISSIONS,
+    REPO_DIR,
+    SOURCES_DIR,
+    OUTPUT_DIR,
     ARCHIVE_DIR,
     TIMEOUT,
     TERM_WIDTH,
@@ -23,6 +25,7 @@ from config import (
     FETCH_WGET,
     FETCH_PDF,
     FETCH_SCREENSHOT,
+    FETCH_DOM,
     FETCH_FAVICON,
     FETCH_AUDIO,
     FETCH_VIDEO,
@@ -49,7 +52,7 @@ def check_dependencies():
         print('    See https://github.com/pirate/bookmark-archiver#troubleshooting for help upgrading your Python installation.')
         raise SystemExit(1)
 
-    if FETCH_PDF or FETCH_SCREENSHOT:
+    if FETCH_PDF or FETCH_SCREENSHOT or FETCH_DOM:
         if run(['which', CHROME_BINARY], stdout=DEVNULL).returncode:
             print('{}[X] Missing dependency: {}{}'.format(ANSI['red'], CHROME_BINARY, ANSI['reset']))
             print('    Run ./setup.sh, then confirm it was installed with: {} --version'.format(CHROME_BINARY))
@@ -64,7 +67,7 @@ def check_dependencies():
             version = [l for l in version_lines if l.isdigit()][-1]
             if int(version) < 59:
                 print(version_lines)
-                print('{red}[X] Chrome version must be 59 or greater for headless PDF and screenshot saving{reset}'.format(**ANSI))
+                print('{red}[X] Chrome version must be 59 or greater for headless PDF, screenshot, and DOM saving{reset}'.format(**ANSI))
                 print('    See https://github.com/pirate/bookmark-archiver for help.')
                 raise SystemExit(1)
         except (IndexError, TypeError, OSError):
@@ -95,7 +98,7 @@ def check_dependencies():
             raise SystemExit(1)
 
 
-def chmod_file(path, cwd='.', permissions=ARCHIVE_PERMISSIONS, timeout=30):
+def chmod_file(path, cwd='.', permissions=OUTPUT_PERMISSIONS, timeout=30):
     """chmod -R <permissions> <cwd>/<path>"""
 
     if not os.path.exists(os.path.join(cwd, path)):
@@ -164,22 +167,25 @@ def progress(seconds=TIMEOUT, prefix=''):
 
     return end
 
+def pretty_path(path):
+    """convert paths like .../bookmark-archiver/archiver/../output/abc into output/abc"""
+    return path.replace(REPO_DIR + '/', '')
+
 
 def download_url(url):
     """download a given url's content into downloads/domain.txt"""
 
-    download_dir = os.path.join(ARCHIVE_DIR, 'downloads')
+    if not os.path.exists(SOURCES_DIR):
+        os.makedirs(SOURCES_DIR)
 
-    if not os.path.exists(download_dir):
-        os.makedirs(download_dir)
+    ts = str(datetime.now().timestamp()).split('.', 1)[0]
 
-    url_domain = url.split('/', 3)[2]
-    output_path = os.path.join(download_dir, '{}.txt'.format(url_domain))
-    
+    source_path = os.path.join(SOURCES_DIR, '{}-{}.txt'.format(domain(url), ts))
+
     print('[*] [{}] Downloading {} > {}'.format(
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         url,
-        output_path,
+        pretty_path(source_path),
     ))
     end = progress(TIMEOUT, prefix='      ')
     try:
@@ -191,10 +197,10 @@ def download_url(url):
         print('    ', e)
         raise SystemExit(1)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(source_path, 'w', encoding='utf-8') as f:
         f.write(downloaded_xml)
 
-    return output_path
+    return source_path
 
 def str_between(string, start, end=None):
     """(<abc>12345</def>, <abc>, </def>)  ->  12345"""
@@ -257,7 +263,7 @@ def find_link(folder, links):
     timestamp = folder.split('.')[0]
     for link in links:
         if link['timestamp'].startswith(timestamp):
-            if link['domain'] in os.listdir(os.path.join(ARCHIVE_DIR, 'html/archive', folder)):
+            if link['domain'] in os.listdir(os.path.join(ARCHIVE_DIR, folder)):
                 return link      # careful now, this isn't safe for most ppl
             if link['domain'] in parse_url(folder):
                 return link
@@ -266,7 +272,7 @@ def find_link(folder, links):
 
 def parse_url(folder):
     """for a given archive folder, figure out what url it's for"""
-    link_json = os.path.join(ARCHIVE_DIR, 'html/archive', folder, 'index.json')
+    link_json = os.path.join(ARCHIVE_DIR, folder, 'index.json')
     if os.path.exists(link_json):
         with open(link_json, 'r') as f:
             try:
@@ -277,7 +283,7 @@ def parse_url(folder):
             except ValueError:
                 print('File contains invalid JSON: {}!'.format(link_json))
 
-    archive_org_txt = os.path.join(ARCHIVE_DIR, 'html/archive' + folder, 'archive.org.txt')
+    archive_org_txt = os.path.join(ARCHIVE_DIR, folder, 'archive.org.txt')
     if os.path.exists(archive_org_txt):
         with open(archive_org_txt, 'r') as f:
             original_link = f.read().strip().split('/http', 1)[-1]
@@ -354,6 +360,14 @@ def fix_folder_path(archive_path, link_folder, link):
             run(['rm', '-R', source])
 
 
+def migrate_data():
+    # migrate old folder to new OUTPUT folder
+    old_dir = os.path.join(REPO_DIR, 'html')
+    if os.path.exists(old_dir):
+        print('[!] WARNING: Moved old output folder "html" to new location: {}'.format(OUTPUT_DIR))
+        run(['mv', old_dir, OUTPUT_DIR], timeout=10)
+
+
 def cleanup_archive(archive_path, links):
     """move any incorrectly named folders to their canonical locations"""
     
@@ -403,6 +417,10 @@ def wget_output_path(link, look_in=None):
     See docs on wget --adjust-extension (-E)
     """
 
+    # if we have it stored, always prefer the actual output path to computed one
+    if link.get('latest', {}).get('wget'):
+        return link['latest']['wget']
+
     urlencode = lambda s: quote(s, encoding='utf-8', errors='replace')
 
     if link['type'] in ('PDF', 'image'):
@@ -412,7 +430,7 @@ def wget_output_path(link, look_in=None):
     # instead of trying to emulate it here, we just look in the output folder
     # to see what html file wget actually created as the output
     wget_folder = link['base_url'].rsplit('/', 1)[0].split('/')
-    look_in = os.path.join(HTML_FOLDER, 'archive', link['timestamp'], *wget_folder)
+    look_in = os.path.join(ARCHIVE_DIR, link['timestamp'], *wget_folder)
 
     if look_in and os.path.exists(look_in):
         html_files = [
@@ -456,9 +474,10 @@ def derived_link_info(link):
         'google_favicon_url': 'https://www.google.com/s2/favicons?domain={domain}'.format(**link),
         'favicon_url': 'archive/{timestamp}/favicon.ico'.format(**link),
         'files_url': 'archive/{timestamp}/index.html'.format(**link),
-        'archive_url': 'archive/{}/{}'.format(link['timestamp'], wget_output_path(link)),
+        'archive_url': 'archive/{}/{}'.format(link['timestamp'], wget_output_path(link) or 'index.html'),
         'pdf_link': 'archive/{timestamp}/output.pdf'.format(**link),
         'screenshot_link': 'archive/{timestamp}/screenshot.png'.format(**link),
+        'dom_link': 'archive/{timestamp}/output.html'.format(**link),
         'archive_org_url': 'https://web.archive.org/web/{base_url}'.format(**link),
     }
 
@@ -469,6 +488,7 @@ def derived_link_info(link):
             'archive_url': 'archive/{timestamp}/{base_url}'.format(**link),
             'pdf_link': 'archive/{timestamp}/{base_url}'.format(**link),
             'screenshot_link': 'archive/{timestamp}/{base_url}'.format(**link),
+            'dom_link': 'archive/{timestamp}/{base_url}'.format(**link),
             'title': '{title} ({type})'.format(**link),
         })
     return link_info

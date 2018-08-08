@@ -2,24 +2,36 @@
 
     "Your own personal Way-Back Machine"
 
-▶️ [Quickstart](#quickstart) | [Details](#details) | [Configuration](#configuration) | [Manual Setup](#manual-setup) | [Troubleshooting](#troubleshooting) | [Demo](https://archive.sweeting.me) | [Changelog](#changelog) | [Donate](https://github.com/pirate/bookmark-archiver/blob/master/donate.md)
+▶️ [Quickstart](#quickstart) | [Details](#details) | [Configuration](#configuration) | [Manual Setup](#manual-setup) | [Troubleshooting](#troubleshooting) | [Demo](https://archive.sweeting.me) | [Changelog](#changelog) | [Donate](https://github.com/pirate/bookmark-archiver/blob/master/DONATE.md)
 
 ---
 
 Save an archived copy of all websites you bookmark (the actual *content* of each site, not just the list of bookmarks).
 
- - <img src="https://nicksweeting.com/images/bookmarks.png" height="22px"/> Browser Bookmarks (Chrome, Firefox, Safari, IE, Opera)
+Can import links from:
+
+ - <img src="https://nicksweeting.com/images/bookmarks.png" height="22px"/> Browser history & bookmarks (Chrome, Firefox, Safari, IE, Opera)
  - <img src="https://getpocket.com/favicon.ico" height="22px"/> Pocket
  - <img src="https://pinboard.in/favicon.ico" height="22px"/> Pinboard
  - <img src="https://nicksweeting.com/images/rss.svg" height="22px"/> RSS or plain text lists
  - Shaarli, Delicious, Instapaper, Reddit Saved Posts, Wallabag, Unmark.it, and more!
- - Contiuous archiving of browsing history (every site, not just bookmarked) (coming soon!...)
 
-Outputs browsable static html archives of each site, a PDF, a screenshot, and a link to a copy on archive.org, all indexed with nice html & json files.  
+For each site, it outputs (configurable):
+
+- Browsable static HTML archive (wget)
+- PDF (Chrome headless)
+- Screenshot (Chrome headless)
+- DOM dump (Chrome headless)
+- Favicon
+- Submits URL to archive.org
+- Index summary pages: index.html & index.json
+
+The archiving is additive, so you can schedule `./archive` to run regularly and pull new links into the index.
+All the saved content is static and indexed with json files, so it lives forever & is easily parseable, it requires no always-running backend.
 
 [DEMO: archive.sweeting.me](https://archive.sweeting.me)
 
-<img src="screenshot.png" width="75%" alt="Desktop Screenshot" align="top"><img src="screenshot_mobile.png" width="25%" alt="Mobile Screenshot" align="top"><br/>
+<img src="https://i.imgur.com/q3Oz9wN.png" width="75%" alt="Desktop Screenshot" align="top"><img src="https://i.imgur.com/TG0fGVo.png" width="25%" alt="Mobile Screenshot" align="top"><br/>
 
 ## Quickstart
 
@@ -39,6 +51,8 @@ Follow the links here to find instructions for exporting bookmarks from each ser
  - [Safari Bookmarks](http://i.imgur.com/AtcvUZA.png)
  - [Opera Bookmarks](http://help.opera.com/Windows/12.10/en/importexport.html)
  - [Internet Explorer Bookmarks](https://support.microsoft.com/en-us/help/211089/how-to-import-and-export-the-internet-explorer-favorites-folder-to-a-32-bit-version-of-windows)
+ - Chrome History: `./bin/export-browser-history --chrome`
+ - Firefox History: `./bin/export-browser-history --firefox`
  - Other File or URL: (e.g. RSS feed) pass as second argument in the next step
 
  (If any of these links are broken, please submit an issue and I'll fix it)
@@ -48,19 +62,25 @@ Follow the links here to find instructions for exporting bookmarks from each ser
 ```bash
 git clone https://github.com/pirate/bookmark-archiver
 cd bookmark-archiver/
-./setup.sh                                      # install all dependencies
-./archive ~/Downloads/bookmark_export.html      # replace with the path to your export file from step 1
+./setup                                         # install all dependencies
 
-# OR
-./archive https://getpocket.com/users/yourusername/feed/all  # url to an RSS, html, or json links file
+# add a list of links from a file
+./archive ~/Downloads/bookmark_export.html      # replace with the path to your export file or URL from step 1
 
-# OR
+# OR add a list of links from remote URL
+./archive "https://getpocket.com/users/yourusername/feed/all"  # url to an RSS, html, or json links file
+
+# OR add all the links from your browser history
+./bin/export-browser-history --chrome           # works with --firefox as well, can take path to SQLite history db
+./archive output/sources/chrome_history.json
+
+# OR just continue archiving the existing links in the index
 ./archive   # at any point if you just want to continue archiving where you left off, without adding any new links
 ```
 
 **3. Done!**
 
-You can open `service/index.html` to view your archive.  (favicons will appear next to each title once it has finished downloading)
+You can open `output/index.html` to view your archive.  (favicons will appear next to each title once it has finished downloading)
 
 If you want to host your archive somewhere to share it with other people, see the [Publishing Your Archive](#publishing-your-archive) section below.
 
@@ -89,14 +109,15 @@ If you want something easier than running programs in the command-line, take a l
 
 `archive.py` is a script that takes a [Pocket-format](https://getpocket.com/export), [JSON-format](https://pinboard.in/export/), [Netscape-format](https://msdn.microsoft.com/en-us/library/aa753582(v=vs.85).aspx), or RSS-formatted list of links, and downloads a clone of each linked website to turn into a browsable archive that you can store locally or host online.
 
-The archiver produces an output folder `html/` containing an `index.html`, `index.json`, and archived copies of all the sites,
+The archiver produces an output folder `output/` containing an `index.html`, `index.json`, and archived copies of all the sites,
 organized by timestamp bookmarked.  It's Powered by [headless](https://developers.google.com/web/updates/2017/04/headless-chrome) Chromium and good 'ol `wget`.
 
 For each sites it saves:
 
  - wget of site, e.g. `en.wikipedia.org/wiki/Example.html` with .html appended if not present
- - `screenshot.png` 1440x900 screenshot of site using headless chrome
  - `output.pdf` Printed PDF of site using headless chrome
+ - `screenshot.png` 1440x900 screenshot of site using headless chrome
+ - `output.html` DOM Dump of the HTML after rendering using headless chrome
  - `archive.org.txt` A link to the saved site on archive.org
  - `audio/` and `video/` for sites like youtube, soundcloud, etc. (using youtube-dl) (WIP)
  - `code/` clone of any repository for github, bitbucket, or gitlab links (WIP)
@@ -129,8 +150,7 @@ env CHROME_BINARY=google-chrome-stable RESOLUTION=1440,900 FETCH_PDF=False ./arc
 **Shell Options:**
  - colorize console ouput: `USE_COLOR` value: [`True`]/`False`
  - show progress bar: `SHOW_PROGRESS` value: [`True`]/`False`
- - archive output directory: `ARCHIVE_DIR` value: [`.`]/`'/var/www/archive'`/`...`
- - archive permissions: `ARCHIVE_PERMISSIONS` values: [`755`]/`644`/`...`
+ - archive permissions: `OUTPUT_PERMISSIONS` values: [`755`]/`644`/`...`
 
 **Dependency Options:**
  - path to Chrome: `CHROME_BINARY` values: [`chromium-browser`]/`/usr/local/bin/google-chrome`/`...`
@@ -143,6 +163,7 @@ env CHROME_BINARY=google-chrome-stable RESOLUTION=1440,900 FETCH_PDF=False ./arc
    - fetch images/css/js with wget: `FETCH_WGET_REQUISITES` (True is highly recommended)
    - print page as PDF: `FETCH_PDF`
    - fetch a screenshot of the page: `FETCH_SCREENSHOT`
+   - fetch a DOM dump of the page: `FETCH_DOM`
    - fetch a favicon for the page: `FETCH_FAVICON`
    - submit the page to archive.org: `SUBMIT_ARCHIVE_DOT_ORG` 
  - screenshot: `RESOLUTION` values: [`1440,900`]/`1024,768`/`...`
@@ -150,30 +171,23 @@ env CHROME_BINARY=google-chrome-stable RESOLUTION=1440,900 FETCH_PDF=False ./arc
  - chrome profile: `CHROME_USER_DATA_DIR` values: [`~/Library/Application\ Support/Google/Chrome/Default`]/`/tmp/chrome-profile`/`...`
     To capture sites that require a user to be logged in, you must specify a path to a chrome profile (which loads the cookies needed for the user to be logged in).  If you don't have an existing chrome profile, create one with `chromium-browser --disable-gpu --user-data-dir=/tmp/chrome-profile`, and log into the sites you need.  Then set `CHROME_USER_DATA_DIR=/tmp/chrome-profile` to make Bookmark Archiver use that profile.
 
-**Index Options:**
- - html index template: `INDEX_TEMPLATE` value:  [`templates/index.html`]/`...`
- - html index row template: `INDEX_ROW_TEMPLATE` value:  [`templates/index_row.html`]/`...`
- - html link index template: `LINK_INDEX_TEMPLATE` value: [`templates/link_index_fancy.html`]/`templates/link_index.html`/`...`
- - html template staticfiles: `TEMPLATE_STATICFILES` value: [`templates/static`]/`...`
- - html template footer text: `FOOTER_INFO` value: [`Content is hosted for personal archiving purposes only.  Contact server owner for any takedown requests.`]/`...`
-
  (See defaults & more at the top of `config.py`)
 
-To tweak the outputted html index file's look and feel, just copy the files in `templates/` somewhere else and edit away.  Use the two index config variables above to point the script to your new custom template files. 
+To tweak the outputted html index file's look and feel, just edit the HTML files in `archiver/templates/`.
 
-The chrome/chromium dependency is _optional_ and only required for screenshots and PDF output, can be safely ignored if both of those are disabled.
+The chrome/chromium dependency is _optional_ and only required for screenshots, PDF, and DOM dump output, it can be safely ignored if those three methods are disabled.
 
 ## Publishing Your Archive
 
 The archive produced by `./archive` is suitable for serving on any provider that can host static html (e.g. github pages!).
 
-You can also serve it from a home server or VPS by uploading the outputted `html` folder to your web directory, e.g. `/var/www/bookmark-archiver` and configuring your webserver.
+You can also serve it from a home server or VPS by uploading the outputted `output` folder to your web directory, e.g. `/var/www/bookmark-archiver` and configuring your webserver.
 
 Here's a sample nginx configuration that works to serve archive folders:
 
 ```nginx
 location / {
-    alias       /var/www/bookmark-archiver/;
+    alias       /path/to/bookmark-archiver/output/;
     index       index.html;
     autoindex   on;               # see directory listing upon clicking "The Files" links
     try_files   $uri $uri/ =404;
@@ -208,7 +222,7 @@ PDFs & Screenshots of dynamic sites in addition to static html, something archiv
 
 Now I can rest soundly knowing important articles and resources I like wont dissapear off the internet.
 
-My published archive as an example: [sweeting.me/pocket](https://home.sweeting.me/pocket).
+My published archive as an example: [archive.sweeting.me](https://archive.sweeting.me).
 
 ## Manual Setup
 
@@ -355,7 +369,7 @@ If you ran the archiver once, it wont re-download sites subsequent times, it wil
 If you haven't already run it, make sure you have a working internet connection and that the parsed URLs look correct.
 You can check the `archive.py` output or `index.html` to see what links it's downloading.
 
-If you're still having issues, try deleting or moving the `service/archive` folder and running `archive.py` again.
+If you're still having issues, try deleting or moving the `output/archive` folder (back it up first!) and running `./archive` again.
 
 **Lots of errors:**
 
@@ -421,6 +435,9 @@ will run fast subsequent times because it only downloads new links that haven't 
 
 ## Changelog
 
+ - v0.1.0 released
+ - support for browser history exporting added with `./bin/export-browser-history`
+ - support for chrome `--dump-dom` to output full page HTML after JS executes
  - v0.0.3 released
  - support for chrome `--user-data-dir` to archive sites that need logins
  - fancy individual html & json indexes for each link

@@ -19,29 +19,30 @@ FETCH_AUDIO =            os.getenv('FETCH_AUDIO',            'False'            
 FETCH_VIDEO =            os.getenv('FETCH_VIDEO',            'False'            ).lower() == 'true'
 FETCH_PDF =              os.getenv('FETCH_PDF',              'True'             ).lower() == 'true'
 FETCH_SCREENSHOT =       os.getenv('FETCH_SCREENSHOT',       'True'             ).lower() == 'true'
+FETCH_DOM =              os.getenv('FETCH_DOM',              'True'             ).lower() == 'true'
 FETCH_FAVICON =          os.getenv('FETCH_FAVICON',          'True'             ).lower() == 'true'
 SUBMIT_ARCHIVE_DOT_ORG = os.getenv('SUBMIT_ARCHIVE_DOT_ORG', 'True'             ).lower() == 'true'
 RESOLUTION =             os.getenv('RESOLUTION',             '1440,1200'        )
 CHECK_SSL_VALIDITY =     os.getenv('CHECK_SSL_VALIDITY',     'True'             ).lower() == 'true'
-ARCHIVE_PERMISSIONS =    os.getenv('ARCHIVE_PERMISSIONS',    '755'              )
-ARCHIVE_DIR =            os.getenv('ARCHIVE_DIR',            '')
+OUTPUT_PERMISSIONS =     os.getenv('OUTPUT_PERMISSIONS',     '755'              )
 CHROME_BINARY =          os.getenv('CHROME_BINARY',          'chromium-browser' )  # change to google-chrome browser if using google-chrome
 FIREFOX_BINARY =         os.getenv('FIREFOX_BINARY',         'firefox' )           # change to firefox-nightly if using nightly
 WGET_BINARY =            os.getenv('WGET_BINARY',            'wget'             )
-WGET_USER_AGENT =        os.getenv('WGET_USER_AGENT',         None)
+WGET_USER_AGENT =        os.getenv('WGET_USER_AGENT',        'Bookmark Archiver')
 CHROME_USER_DATA_DIR =   os.getenv('CHROME_USER_DATA_DIR',    None)
 FIREFOX_PROFILE =        os.getenv('FIREFOX_PROFILE',        'screenshots') # do not forget to create the profile!
 TIMEOUT =                int(os.getenv('TIMEOUT',            '60'))
-LINK_INDEX_TEMPLATE =    os.getenv('LINK_INDEX_TEMPLATE',    'templates/link_index_fancy.html')
-INDEX_TEMPLATE =         os.getenv('INDEX_TEMPLATE',         'templates/index.html')
-INDEX_ROW_TEMPLATE =     os.getenv('INDEX_ROW_TEMPLATE',     'templates/index_row.html')
-TEMPLATE_STATICFILES =   os.getenv('TEMPLATE_STATICFILES',   'templates/static')
 FOOTER_INFO =            os.getenv('FOOTER_INFO',            'Content is hosted for personal archiving purposes only.  Contact server owner for any takedown requests.',)
 
-### Output Paths
-ROOT_FOLDER = os.path.dirname(os.path.abspath(__file__))
-HTML_FOLDER = os.path.join(ARCHIVE_DIR, 'html')
-os.chdir(ROOT_FOLDER)
+### Paths
+REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+OUTPUT_DIR = os.path.join(REPO_DIR, 'output')
+ARCHIVE_DIR = os.path.join(OUTPUT_DIR, 'archive')
+SOURCES_DIR = os.path.join(OUTPUT_DIR, 'sources')
+
+PYTHON_PATH = os.path.join(REPO_DIR, 'archiver')
+TEMPLATES_DIR = os.path.join(PYTHON_PATH, 'templates')
 
 # ******************************************************************************
 # ********************** Do not edit below this point **************************
@@ -66,9 +67,9 @@ if not USE_COLOR:
 
 ### Confirm Environment Setup
 try:
-    GIT_SHA = run(["git", "rev-list", "-1", "HEAD", "./"], stdout=PIPE, cwd=ROOT_FOLDER).stdout.strip().decode()
+    GIT_SHA = run(["git", "rev-list", "-1", "HEAD", "./"], stdout=PIPE, cwd=REPO_DIR).stdout.strip().decode()
 except Exception:
-    GIT_SHA = None
+    GIT_SHA = 'unknown'
     print('[!] Warning, you need git installed for some archiving features to save correct version numbers!')
 
 if sys.stdout.encoding.upper() != 'UTF-8':

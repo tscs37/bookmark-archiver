@@ -13,6 +13,8 @@ from links import links_after_timestamp
 from config import (
     ARCHIVE_DIR,
     CHROME_BINARY,
+    FIREFOX_BINARY,
+    FIREFOX_PROFILE,
     FETCH_WGET,
     FETCH_WGET_REQUISITES,
     FETCH_PDF,
@@ -254,7 +256,7 @@ def fetch_pdf(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DI
 
 
 @attach_result_to_link('screenshot')
-def fetch_screenshot(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DIR, resolution=RESOLUTION):
+def fetch_screenshot(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_DATA_DIR, resolution=RESOLUTION, firefox_profile=FIREFOX_PROFILE):
     """take screenshot of site using chrome --headless"""
 
     if link['type'] in ('PDF', 'image'):
@@ -264,11 +266,11 @@ def fetch_screenshot(link_dir, link, timeout=TIMEOUT, user_data_dir=CHROME_USER_
         return {'output': 'screenshot.png', 'status': 'skipped'}
 
     CMD = [
-        *chrome_headless(user_data_dir=user_data_dir),
-        '--screenshot',
-        '--window-size={}'.format(resolution),
-        link['url']
+         *firefox_headless(profile=firefox_profile),
+         '--screenshot',
+         link['url'],
     ]
+    
     end = progress(timeout, prefix='      ')
     try:
         result = run(CMD, stdout=PIPE, stderr=PIPE, cwd=link_dir, timeout=timeout + 1)  # sreenshot.png
@@ -451,4 +453,8 @@ def chrome_headless(binary=CHROME_BINARY, user_data_dir=CHROME_USER_DATA_DIR):
         args.append('--user-data-dir={}'.format(user_data_dir))
     elif os.path.exists(default_profile):
         args.append('--user-data-dir={}'.format(default_profile))
+    return args
+
+def firefox_headless(binary=FIREFOX_BINARY, profile=FIREFOX_PROFILE):
+    args = [binary, '--no-remote', '-P', profile, '--headless']
     return args

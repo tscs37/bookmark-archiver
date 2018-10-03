@@ -6,11 +6,11 @@
 
 ---
 
-Save an archived copy of all websites you bookmark (the actual *content* of each site, not just the list of bookmarks).
+Save an archived copy of the websites you visit (the actual *content* of each site, not just the list of links).
 
 Can import links from:
 
- - <img src="https://nicksweeting.com/images/bookmarks.png" height="22px"/> Browser history & bookmarks (Chrome, Firefox, Safari, IE, Opera)
+ - <img src="https://nicksweeting.com/images/bookmarks.png" height="22px"/> Browser history or bookmarks (Chrome, Firefox, Safari, IE, Opera)
  - <img src="https://getpocket.com/favicon.ico" height="22px"/> Pocket
  - <img src="https://pinboard.in/favicon.ico" height="22px"/> Pinboard
  - <img src="https://nicksweeting.com/images/rss.svg" height="22px"/> RSS or plain text lists
@@ -43,7 +43,7 @@ Follow the links here to find instructions for exporting bookmarks from each ser
  - [Pinboard](https://pinboard.in/export/)
  - [Instapaper](https://www.instapaper.com/user/export)
  - [Reddit Saved Posts](https://github.com/csu/export-saved-reddit)
- - [Shaarli](http://shaarli.readthedocs.io/en/master/Backup,-restore,-import-and-export/#export-links-as)
+ - [Shaarli](https://shaarli.readthedocs.io/en/master/guides/backup-restore-import-export/#export-links-as)
  - [Unmark.it](http://help.unmark.it/import-export)
  - [Wallabag](https://doc.wallabag.org/en/user/import/wallabagv2.html)
  - [Chrome Bookmarks](https://support.google.com/chrome/answer/96816?hl=en)
@@ -170,6 +170,7 @@ env CHROME_BINARY=google-chrome-stable RESOLUTION=1440,900 FETCH_PDF=False ./arc
  - user agent: `WGET_USER_AGENT` values: [`Wget/1.19.1`]/`"Mozilla/5.0 ..."`/`...`
  - chrome profile: `CHROME_USER_DATA_DIR` values: [`~/Library/Application\ Support/Google/Chrome/Default`]/`/tmp/chrome-profile`/`...`
     To capture sites that require a user to be logged in, you must specify a path to a chrome profile (which loads the cookies needed for the user to be logged in).  If you don't have an existing chrome profile, create one with `chromium-browser --disable-gpu --user-data-dir=/tmp/chrome-profile`, and log into the sites you need.  Then set `CHROME_USER_DATA_DIR=/tmp/chrome-profile` to make Bookmark Archiver use that profile.
+ - output directory: `OUTPUT_DIR` values: [`$REPO_DIR/output`]/`/srv/www/bookmarks`/`...` Optionally output the archives to an alternative directory.
 
  (See defaults & more at the top of `config.py`)
 

@@ -27,6 +27,7 @@ from config import (
     FETCH_FAVICON,
     WGET_USER_AGENT,
     CHROME_USER_DATA_DIR,
+    CHROME_SANDBOX,
     TIMEOUT,
     ANSI,
     ARCHIVE_DIR,
@@ -351,10 +352,10 @@ def archive_dot_org(link_dir, link, timeout=TIMEOUT):
         archive_org_url = open(path, 'r').read().strip()
         return {'output': archive_org_url, 'status': 'skipped'}
 
-    submit_url = 'https://web.archive.org/save/{}'.format(link['url'].split('?', 1)[0])
+    submit_url = 'https://web.archive.org/save/{}'.format(link['url'])
 
     success = False
-    CMD = ['curl', '-I', submit_url]
+    CMD = ['curl', '-L', '-I', '-X', 'GET', submit_url]
     end = progress(timeout, prefix='      ')
     try:
         result = run(CMD, stdout=PIPE, stderr=DEVNULL, cwd=link_dir, timeout=timeout + 1)  # archive.org.txt
@@ -498,6 +499,8 @@ def fetch_favicon(link_dir, link, timeout=TIMEOUT):
 
 def chrome_headless(binary=CHROME_BINARY, user_data_dir=CHROME_USER_DATA_DIR):
     args = [binary, '--headless']  # '--disable-gpu'
+    if not CHROME_SANDBOX:
+        args.append('--no-sandbox')
     default_profile = os.path.expanduser('~/Library/Application Support/Google/Chrome/Default')
     if user_data_dir:
         args.append('--user-data-dir={}'.format(user_data_dir))

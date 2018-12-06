@@ -1,8 +1,10 @@
 # Bookmark Archiver <img src="https://nicksweeting.com/images/archive.png" height="22px"/>  [![Github Stars](https://img.shields.io/github/stars/pirate/bookmark-archiver.svg)](https://github.com/pirate/bookmark-archiver) [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/thesquashSH)
 
+## ANNOUNCEMENT: SOON TO BE RENAMED, [COMMENT HERE](https://github.com/pirate/bookmark-archiver/issues/108) TO DISCUSS NEW NAMES.
+
     "Your own personal Way-Back Machine"
 
-▶️ [Quickstart](#quickstart) | [Details](#details) | [Configuration](#configuration) | [Manual Setup](#manual-setup) | [Troubleshooting](#troubleshooting) | [Demo](https://archive.sweeting.me) | [Changelog](#changelog) | [Donate](https://github.com/pirate/bookmark-archiver/blob/master/DONATE.md)
+▶️ [Quickstart](#quickstart) | [Details](#details) | [Configuration](#configuration) | [Manual Setup](#manual-setup) | [Troubleshooting](#troubleshooting) | [Demo](https://archive.sweeting.me) | [Source](https://github.com/pirate/bookmark-archiver/tree/master) | [Changelog](#changelog) | [Donate](https://github.com/pirate/bookmark-archiver/blob/master/DONATE.md)
 
 ---
 
@@ -21,7 +23,7 @@ For each site, it outputs (configurable):
 - Browsable static HTML archive (wget)
 - PDF (Chrome headless)
 - Screenshot (Chrome headless)
-- DOM dump (Chrome headless)
+- HTML after 2s of JS running (Chrome headless)
 - Favicon
 - Submits URL to archive.org
 - Index summary pages: index.html & index.json
@@ -37,7 +39,7 @@ All the saved content is static and indexed with json files, so it lives forever
 
 **1. Get your list of URLs:**
 
-Follow the links here to find instructions for exporting bookmarks from each service.
+Follow the links here to find instructions for exporting a list of URLs from each service.
 
  - [Pocket](https://getpocket.com/export)
  - [Pinboard](https://pinboard.in/export/)
@@ -140,6 +142,11 @@ You can run it in parallel by using the `resume` feature, or by manually splitti
 ```
 Users have reported running it with 50k+ bookmarks with success (though it will take more RAM while running).
 
+If you already imported a huge list of bookmarks and want to import only new
+bookmarks, you can use the `ONLY_NEW` environment variable. This is useful if
+you want to import a bookmark dump periodically and want to skip broken links
+which are already in the index.
+
 ## Configuration
 
 You can tweak parameters via environment variables, or by editing `config.py` directly:
@@ -158,6 +165,7 @@ env CHROME_BINARY=google-chrome-stable RESOLUTION=1440,900 FETCH_PDF=False ./arc
 
 **Archive Options:**
  - maximum allowed download time per link: `TIMEOUT` values: [`60`]/`30`/`...`
+ - import only new links: `ONLY_NEW` values `True`/[`False`]
  - archive methods (values: [`True`]/`False`):
    - fetch page with wget: `FETCH_WGET`
    - fetch images/css/js with wget: `FETCH_WGET_REQUISITES` (True is highly recommended)
@@ -383,37 +391,21 @@ Not all sites can be effectively archived with each method, that's why it's best
 If it seems like more than 10-20% of sites in the archive are broken, open an [issue](https://github.com/pirate/bookmark-archiver/issues)
 with some of the URLs that failed to be archived and I'll investigate.
 
+**Removing unwanted links from the index:**
+
+If you accidentally added lots of unwanted links into index and they slow down your archiving, you can use the `bin/purge` script to remove them from your index, which removes everything matching python regexes you pass into it. E.g: `bin/purge -r 'amazon\.com' -r 'google\.com'`. It would prompt before removing links from index, but for extra safety you might want to back up `index.json` first (or put in undex version control).
+
 ### Hosting the Archive
 
 If you're having issues trying to host the archive via nginx, make sure you already have nginx running with SSL.
 If you don't, google around, there are plenty of tutorials to help get that set up.  Open an [issue](https://github.com/pirate/bookmark-archiver/issues)
 if you have problem with a particular nginx config.
 
-## Roadmap
-
-If you feel like contributing a PR, some of these tasks are pretty easy.  Feel free to open an issue if you need help getting started in any way!
-
- - download closed-captions text from youtube videos
- - body text extraction using [fathom](https://hacks.mozilla.org/2017/04/fathom-a-framework-for-understanding-web-pages/)
- - auto-tagging based on important extracted words
- - audio & video archiving with `youtube-dl`
- - full-text indexing with elasticsearch/elasticlunr/ag
- - video closed-caption downloading for full-text indexing video content
- - automatic text summaries of article with summarization library
- - feature image extraction
- - http support (from my https-only domain)
- - try wgetting dead sites from archive.org (https://github.com/hartator/wayback-machine-downloader)
- - live updating from pocket/pinboard
-
-It's possible to pull links via the pocket API or public pocket RSS feeds instead of downloading an html export.
-Once I write a script to do that, we can stick this in `cron` and have it auto-update on it's own.
-
-For now you just have to download `ril_export.html` and run `archive.py` each time it updates. The script
-will run fast subsequent times because it only downloads new links that haven't been archived already.
 
 ## Links
 
 **Similar Projects:**
+ - [Reminiscence](https://github.com/kanishka-linux/reminiscence/) extremely similar to BA, uses a Django backend + UI and provides auto tagging and summary features with NLTK
  - [Memex by Worldbrain.io](https://github.com/WorldBrain/Memex) a browser extension that saves all your history and does full-text search
  - [Hypothes.is](https://web.hypothes.is/) a web/pdf/ebook annotation tool that also archives content
  - [Perkeep](https://perkeep.org/) "Perkeep lets you permanently keep your stuff, for life."
@@ -434,6 +426,31 @@ will run fast subsequent times because it only downloads new links that haven't 
  - [Sheetsee-Pocket](http://jlord.us/sheetsee-pocket/) project that provides a pretty auto-updating index of your Pocket links (without archiving them)
  - [Pocket -> IFTTT -> Dropbox](https://christopher.su/2013/saving-pocket-links-file-day-dropbox-ifttt-launchd/) Post by Christopher Su on his Pocket saving IFTTT recipie
 
+
+## Roadmap
+
+If you feel like contributing a PR, some of these tasks are pretty easy.  Feel free to open an issue if you need help getting started in any way!
+
+**Major upcoming changes:**
+
+ - change the name
+ - make it a modularized python package to allow installing via pip and importing individual componenets
+ - add a plugin architecture and allow people to contribute plugins for archive methods, indexers, parsers, etc
+ - add a web GUI for managing sources and adding new links
+
+**Minor upcoming changes:**
+ - download closed-captions text from youtube videos
+ - body text extraction using [fathom](https://hacks.mozilla.org/2017/04/fathom-a-framework-for-understanding-web-pages/)
+ - auto-tagging based on important extracted words
+ - audio & video archiving with `youtube-dl`
+ - full-text indexing with elasticsearch/elasticlunr/ag
+ - video closed-caption downloading on Youtube for full-text indexing of video content
+ - automatic text summaries of article with nlp summarization library
+ - featured image extraction
+ - http support (from my https-only domain)
+ - try wgetting dead sites from archive.org (https://github.com/hartator/wayback-machine-downloader)
+ 
+ 
 ## Changelog
 
  - v0.1.0 released
@@ -458,12 +475,13 @@ will run fast subsequent times because it only downloads new links that haven't 
  - added Pocket-format export support
  - v0.0.0 released: created Pocket Archive Stream 2017/05/05
  
+ 
  ## Donations
  
  This project can really flourish with some more engineering effort, but unless it can support   
  me financially I'm unlikely to be able to take it to the next level alone.  It's already pretty   
  functional and robust, but it really deserves to be taken to the next level with a few more   
- talented engineers.  If you or your foundation wants to sponsor this project long-term, contact  
+ talented engineers.  If you want to help sponsor this project long-term or just say thanks or suggest changes, contact  
  me at bookmark-archiver@sweeting.me.
    
- [Grants / Donations](https://github.com/pirate/bookmark-archiver/blob/master/donate.md)
+ [Grants / Donations](https://github.com/pirate/bookmark-archiver/blob/master/DONATE.md)
